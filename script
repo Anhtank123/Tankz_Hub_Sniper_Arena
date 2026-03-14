@@ -1,0 +1,355 @@
+-- =========================================================================
+-- TANKZ HUB - FLAWLESS ENGINEERING EDITION (v4.0)
+-- Problem Solved: Ghost Corpse Aiming & Raw Input Binding
+-- Coded by a Pro for a Pro.
+-- =========================================================================
+
+local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/releases/latest/download/main.lua"))()
+
+-- 1. INITIALIZE WINDOW
+local Window = Fluent:CreateWindow({
+    Title = "Tankz Hub",
+    SubTitle = "Professional Edition v4.0",
+    TabWidth = 160,
+    Size = UDim2.fromOffset(560, 420),
+    Acrylic = true,
+    Theme = "Dark",
+    MinimizeKey = Enum.KeyCode.RightControl
+})
+
+-- Welcome notification với icon
+Fluent:Notify({ 
+    Title = "🔥 Welcome to Tankz Hub", 
+    Content = "Professional Edition v4.0 - Press RightControl to toggle UI. Ready to dominate!",
+    Duration = 5 
+})
+
+-- 2. SETTINGS DATA
+local Settings = {
+    Aimbot = false, AimbotSmooth = 3, FOV = 200, ShowFOVCircle = true,
+    AimThroughWalls = false, TriggerBot = false,
+    ESP_Box = false, ESP_Health = false, ESP_Tracer = false,
+    ESP_Skeleton = false, ESP_Distance = false, ESP_LookDir = false
+}
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UIS = game:GetService("UserInputService")
+local Camera = workspace.CurrentCamera
+local LP = Players.LocalPlayer
+local Mouse = LP:GetMouse()
+
+local CurrentAimKey = Enum.UserInputType.MouseButton2 -- Default Safe Value
+local LastShootTime = 0 
+
+-- 3. TABS SETUP
+local Tabs = {
+    Combat = Window:AddTab({ Title = "Combat", Icon = "crosshair" }),
+    Visuals = Window:AddTab({ Title = "Visuals", Icon = "eye" }),
+    Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
+}
+
+-- ==================== TAB: COMBAT ====================
+Tabs.Combat:AddToggle("AimToggle", {Title = "🎯 Enable Aimbot", Default = false }):OnChanged(function(v) Settings.Aimbot = v end)
+
+-- [FIX 1]: RAW ENUM BINDING - Đọc thẳng tín hiệu vật lý, không convert lằng nhằng
+Tabs.Combat:AddKeybind("AimKeybind", {
+    Title = "🖱️ Aimbot Key (Hold to aim)",
+    Mode = "Hold",
+    Default = "RightClick",
+    Callback = function() end,
+    ChangedCallback = function(NewKey)
+        -- NewKey ở đây CHÍNH LÀ Enum. Tự động nhận diện mọi phím/chuột.
+        CurrentAimKey = NewKey
+        Fluent:Notify({Title = "✅ Aimbot Key Updated", Content = "Keybind: " .. tostring(NewKey), Duration = 2})
+    end
+})
+
+Tabs.Combat:AddToggle("AimWallToggle", {Title = "👁️ Aim Through Walls", Default = false }):OnChanged(function(v) Settings.AimThroughWalls = v end)
+Tabs.Combat:AddSlider("SmoothSlider", {Title = "🎚️ Smoothness", Min = 1, Max = 15, Default = 3, Rounding = 0}):OnChanged(function(v) Settings.AimbotSmooth = v end)
+Tabs.Combat:AddSlider("FOVSlider", {Title = "⭕ FOV Radius", Min = 50, Max = 800, Default = 200, Rounding = 0}):OnChanged(function(v) Settings.FOV = v end)
+Tabs.Combat:AddToggle("FOVToggle", {Title = "📍 Show FOV Circle", Default = true }):OnChanged(function(v) Settings.ShowFOVCircle = v end)
+
+Tabs.Combat:AddParagraph({ Title = "⚡ AutoFire", Content = "Automatic trigger when locked" })
+Tabs.Combat:AddToggle("TriggerToggle", {Title = "🔫 TriggerBot", Default = false }):OnChanged(function(v) Settings.TriggerBot = v end)
+
+-- ==================== TAB: VISUALS ====================
+Tabs.Visuals:AddToggle("BoxToggle", {Title = "📦 Box ESP", Default = false }):OnChanged(function(v) Settings.ESP_Box = v end)
+Tabs.Visuals:AddToggle("HealthToggle", {Title = "❤️ Health Bar", Default = false }):OnChanged(function(v) Settings.ESP_Health = v end)
+Tabs.Visuals:AddToggle("TracerToggle", {Title = "📊 Tracers", Default = false }):OnChanged(function(v) Settings.ESP_Tracer = v end)
+
+Tabs.Visuals:AddParagraph({ Title = "🔬 Advanced Visuals", Content = "Extra visual information" })
+Tabs.Visuals:AddToggle("SkelToggle", {Title = "💀 Skeleton ESP", Default = false }):OnChanged(function(v) Settings.ESP_Skeleton = v end)
+Tabs.Visuals:AddToggle("DistToggle", {Title = "📏 Distance ESP", Default = false }):OnChanged(function(v) Settings.ESP_Distance = v end)
+Tabs.Visuals:AddToggle("LookToggle", {Title = "👀 Look Direction", Default = false }):OnChanged(function(v) Settings.ESP_LookDir = v end)
+
+-- ==================== TAB: SETTINGS ====================
+Tabs.Settings:AddParagraph({ Title = "⚙️ Configuration", Content = "Customize your experience" })
+
+Tabs.Settings:AddKeybind("ToggleUIKeybind", {
+    Title = "⌨️ Toggle UI Key",
+    Mode = "Toggle",
+    Default = "RightControl",
+    Callback = function() end,
+    ChangedCallback = function(New)
+        -- Xử lý keybind value đúng cách
+        local keyValue = New
+        if typeof(New) == "EnumItem" then
+            keyValue = New
+        elseif typeof(New) == "string" then
+            keyValue = Enum.KeyCode[New] or Enum.UserInputType[New] or Enum.KeyCode.RightControl
+        else
+            keyValue = Enum.KeyCode.RightControl
+        end
+        Window:SetMinimizeKey(keyValue)
+        Fluent:Notify({
+            Title = "✅ Keybind Updated",
+            Content = "UI Toggle Key: " .. tostring(keyValue),
+            Duration = 2
+        })
+    end
+})
+
+Tabs.Settings:AddParagraph({ Title = "🔌 Session", Content = "Manage Tankz Hub session" })
+
+Tabs.Settings:AddButton({
+    Title = "🛑 Unload Tankz Hub",
+    Callback = function()
+        Fluent:Notify({
+            Title = "💾 Shutting Down",
+            Content = "Cleaning up all modules...",
+            Duration = 1
+        })
+        if _G.TankzRender then _G.TankzRender:Disconnect() end
+        if _G.TankzDrawings then
+            for _, d in pairs(_G.TankzDrawings) do if d then d:Remove() end end
+        end
+        wait(0.3)
+        Window:Destroy()
+        Fluent:Notify({
+            Title = "✅ Unloaded",
+            Content = "Tankz Hub has been unloaded successfully",
+            Duration = 2
+        })
+    end
+})
+
+Window:SelectTab(1)
+
+-- =========================================================================
+-- ENGINE CORE: DRAWINGS & STRICT CHECKS
+-- =========================================================================
+_G.TankzDrawings = _G.TankzDrawings or {}
+
+local function CreateDrawing(type, prop)
+    local obj = Drawing.new(type)
+    for i, v in pairs(prop) do obj[i] = v end
+    table.insert(_G.TankzDrawings, obj)
+    return obj
+end
+
+local function ClearDrawings()
+    for _, d in pairs(_G.TankzDrawings) do
+        if d then d:Remove() end
+    end
+    _G.TankzDrawings = {}
+end
+
+local fovCircle = Drawing.new("Circle")
+fovCircle.Thickness = 1.5
+fovCircle.NumSides = 60
+fovCircle.Color = Color3.fromRGB(255, 255, 255)
+fovCircle.Filled = false
+table.insert(_G.TankzDrawings, fovCircle)
+
+-- [ANTI-GHOST CHECK] Kiểm tra xác chết 100% - không bao giờ aim vào corpse
+local function IsAlive(plr)
+    if not plr or not plr.Character then return false end
+    local char = plr.Character
+    
+    -- Đảm bảo xác không bị vứt vào vùng Debris (phổ biến trong Roblox)
+    if not char:IsDescendantOf(workspace) then return false end
+    
+    local hum = char:FindFirstChild("Humanoid")
+    local root = char:FindFirstChild("HumanoidRootPart")
+    local head = char:FindFirstChild("Head")
+    
+    if not hum or not root or not head then return false end
+    
+    -- Xác nhận máu > 0 VÀ trạng thái không phải là đã chết
+    if hum.Health <= 0 then return false end
+    if hum:GetState() == Enum.HumanoidStateType.Dead then return false end
+    
+    -- Game FPS nào có humanoid state, check luôn
+    local state = hum:GetState()
+    if state == Enum.HumanoidStateType.Dead then return false end
+    
+    -- Nếu cái đầu tàng hình >= 90%, 100% là chết (Roblox FPS trick)
+    if head.Transparency >= 0.9 then return false end
+    
+    return true, hum, root, head
+end
+
+local function GetClosestTarget()
+    local target = nil
+    local shortestDist = Settings.FOV
+    local mousePos = UIS:GetMouseLocation()
+
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LP then
+            local alive, hum, root, head = IsAlive(p)
+            if alive then
+                local screenPos, onScreen = Camera:WorldToViewportPoint(head.Position)
+                
+                if onScreen then
+                    local isVisible = true
+                    if not Settings.AimThroughWalls then
+                        local partsObscuring = Camera:GetPartsObscuringTarget({head.Position}, {LP.Character, p.Character})
+                        if #partsObscuring > 0 then
+                            isVisible = false
+                        end
+                    end
+
+                    if isVisible then
+                        local dist = (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude
+                        if dist < shortestDist then
+                            shortestDist = dist
+                            target = head
+                        end
+                    end
+                end
+            end
+        end
+    end
+    return target
+end
+
+if _G.TankzRender then _G.TankzRender:Disconnect() end
+
+-- =========================================================================
+-- MAIN RENDER LOOP (60+ FPS)
+-- =========================================================================
+_G.TankzRender = RunService.RenderStepped:Connect(function()
+    ClearDrawings()
+    
+    local mousePos = UIS:GetMouseLocation()
+    
+    -- Re-create FOV Circle so it doesn't get cleared
+    local currentFov = CreateDrawing("Circle", {
+        Thickness = 1.5, NumSides = 60, Color = Color3.fromRGB(255, 255, 255),
+        Filled = false, Position = mousePos, Radius = Settings.FOV, Visible = Settings.ShowFOVCircle
+    })
+
+    -- 1. ESP LOOP
+    for _, p in pairs(Players:GetPlayers()) do
+        if p ~= LP then
+            local alive, hum, root, head = IsAlive(p)
+            if alive then
+                local rootPos, rootVis = Camera:WorldToViewportPoint(root.Position)
+                local headPos, headVis = Camera:WorldToViewportPoint(head.Position + Vector3.new(0, 1, 0))
+                local legPos, legVis = Camera:WorldToViewportPoint(root.Position - Vector3.new(0, 3, 0))
+
+                if headVis or legVis then
+                    local h = legPos.Y - headPos.Y
+                    local w = h * 0.55
+                    local x = headPos.X - (w / 2)
+                    local y = headPos.Y
+
+                    if Settings.ESP_Box then
+                        CreateDrawing("Square", {
+                            Size = Vector2.new(w, h), Position = Vector2.new(x, y),
+                            Color = Color3.fromRGB(255, 50, 50), Thickness = 1.5, Visible = true
+                        })
+                    end
+
+                    if Settings.ESP_Health then
+                        local hpPct = math.clamp(hum.Health / hum.MaxHealth, 0, 1)
+                        local hpColor = Color3.fromRGB(255 - (hpPct * 255), hpPct * 255, 0)
+                        CreateDrawing("Square", {Size = Vector2.new(3, h), Position = Vector2.new(x - 6, y), Color = Color3.fromRGB(0, 0, 0), Filled = true, Visible = true})
+                        CreateDrawing("Square", {Size = Vector2.new(1, h * hpPct), Position = Vector2.new(x - 5, y + (h * (1 - hpPct))), Color = hpColor, Filled = true, Visible = true})
+                    end
+
+                    if Settings.ESP_Tracer then
+                        CreateDrawing("Line", {From = Vector2.new(Camera.ViewportSize.X / 2, Camera.ViewportSize.Y), To = Vector2.new(legPos.X, legPos.Y), Color = Color3.fromRGB(255, 255, 255), Thickness = 1, Transparency = 0.5, Visible = true})
+                    end
+
+                    if Settings.ESP_Distance and LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
+                        local dist = math.floor((LP.Character.HumanoidRootPart.Position - root.Position).Magnitude)
+                        CreateDrawing("Text", {Text = "[" .. tostring(dist) .. "m]", Size = 15, Center = true, Outline = true, Color = Color3.fromRGB(255, 255, 255), Position = Vector2.new(rootPos.X, legPos.Y + 5), Visible = true})
+                    end
+
+                    if Settings.ESP_LookDir then
+                        local lookTo = head.Position + (head.CFrame.LookVector * 5)
+                        local lookScreen, lookV = Camera:WorldToViewportPoint(lookTo)
+                        local headScreen, headV = Camera:WorldToViewportPoint(head.Position)
+                        if lookV and headV then
+                            CreateDrawing("Line", {From = Vector2.new(headScreen.X, headScreen.Y), To = Vector2.new(lookScreen.X, lookScreen.Y), Color = Color3.fromRGB(0, 255, 255), Thickness = 1.5, Visible = true})
+                        end
+                    end
+
+                    if Settings.ESP_Skeleton then
+                        local char = p.Character
+                        local function DrawLine(p1, p2)
+                            local pt1 = char:FindFirstChild(p1)
+                            local pt2 = char:FindFirstChild(p2)
+                            if pt1 and pt2 then
+                                local s1, v1 = Camera:WorldToViewportPoint(pt1.Position)
+                                local s2, v2 = Camera:WorldToViewportPoint(pt2.Position)
+                                if v1 and v2 then
+                                    CreateDrawing("Line", {From = Vector2.new(s1.X, s1.Y), To = Vector2.new(s2.X, s2.Y), Color = Color3.fromRGB(255, 255, 255), Thickness = 1, Visible = true})
+                                end
+                            end
+                        end
+                        if char:FindFirstChild("UpperTorso") then
+                            DrawLine("Head", "UpperTorso") DrawLine("UpperTorso", "LowerTorso")
+                            DrawLine("UpperTorso", "LeftUpperArm") DrawLine("LeftUpperArm", "LeftLowerArm")
+                            DrawLine("UpperTorso", "RightUpperArm") DrawLine("RightUpperArm", "RightLowerArm")
+                            DrawLine("LowerTorso", "LeftUpperLeg") DrawLine("LeftUpperLeg", "LeftLowerLeg")
+                            DrawLine("LowerTorso", "RightUpperLeg") DrawLine("RightUpperLeg", "RightLowerLeg")
+                        elseif char:FindFirstChild("Torso") then
+                            DrawLine("Head", "Torso") DrawLine("Torso", "Left Arm") DrawLine("Torso", "Right Arm") DrawLine("Torso", "Left Leg") DrawLine("Torso", "Right Leg")
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    -- 2. AIMBOT LOGIC
+    local isAiming = false
+    if CurrentAimKey then
+        pcall(function()
+            if CurrentAimKey.EnumType == Enum.UserInputType then
+                isAiming = UIS:IsMouseButtonPressed(CurrentAimKey)
+            else
+                isAiming = UIS:IsKeyDown(CurrentAimKey)
+            end
+        end)
+    end
+
+    if Settings.Aimbot and isAiming then
+        local targetHead = GetClosestTarget()
+        if targetHead then
+            local screenPos = Camera:WorldToViewportPoint(targetHead.Position)
+            if mousemoverel then
+                mousemoverel((screenPos.X - mousePos.X) / Settings.AimbotSmooth, (screenPos.Y - mousePos.Y) / Settings.AimbotSmooth)
+            end
+        end
+    end
+
+    -- 3. TRIGGERBOT LOGIC
+    if Settings.TriggerBot and Mouse.Target then
+        local target = Mouse.Target.Parent
+        local targetPlayer = Players:GetPlayerFromCharacter(target)
+        if targetPlayer and targetPlayer ~= LP then
+            if IsAlive(targetPlayer) then -- Cực kỳ an toàn, không bắn vào xác!
+                if tick() - LastShootTime > 0.15 then
+                    if mouse1click then 
+                        mouse1click() 
+                        LastShootTime = tick()
+                    end
+                end
+            end
+        end
+    end
+end)
