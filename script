@@ -86,30 +86,6 @@ Tabs.Visuals:AddToggle("LookToggle", {Title = "👀 Look Direction", Default = f
 -- ==================== TAB: SETTINGS ====================
 Tabs.Settings:AddParagraph({ Title = "⚙️ Configuration", Content = "Customize your experience" })
 
-Tabs.Settings:AddKeybind("ToggleUIKeybind", {
-    Title = "⌨️ Toggle UI Key",
-    Mode = "Toggle",
-    Default = "RightControl",
-    Callback = function() end,
-    ChangedCallback = function(New)
-        -- Xử lý keybind value đúng cách
-        local keyValue = New
-        if typeof(New) == "EnumItem" then
-            keyValue = New
-        elseif typeof(New) == "string" then
-            keyValue = Enum.KeyCode[New] or Enum.UserInputType[New] or Enum.KeyCode.RightControl
-        else
-            keyValue = Enum.KeyCode.RightControl
-        end
-        Window:SetMinimizeKey(keyValue)
-        Fluent:Notify({
-            Title = "✅ Keybind Updated",
-            Content = "UI Toggle Key: " .. tostring(keyValue),
-            Duration = 2
-        })
-    end
-})
-
 Tabs.Settings:AddParagraph({ Title = "🔌 Session", Content = "Manage Tankz Hub session" })
 
 Tabs.Settings:AddButton({
