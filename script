@@ -41,7 +41,7 @@ local LastShootTime = 0
 -- 2. CREATE WINDOW
 local Window = Fluent:CreateWindow({
     Title = "Tankz Hub",
-    SubTitle = "Masterpiece v10.3",
+    SubTitle = "Masterpiece",
     TabWidth = 160,
     Size = UDim2.fromOffset(560, 420),
     Acrylic = false, 
@@ -50,7 +50,7 @@ local Window = Fluent:CreateWindow({
 })
 
 Fluent:Notify({ 
-    Title = "🔥 Tankz Hub v10.3", 
+    Title = "🔥 Tankz Hub", 
     Content = "Paid Features Unlocked! UI Notifs & Pro Aimbot ready.",
     Duration = 5 
 })
